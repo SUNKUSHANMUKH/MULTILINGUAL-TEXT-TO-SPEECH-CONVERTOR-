@@ -1,0 +1,109 @@
+CODE FOR THE PROGRAM 
+import streamlit as st
+import os
+import time
+import glob
+from gtts import gTTS
+from translate import Translator
+
+# Install required packages
+os.system("pip install translate gtts streamlit")
+
+# Create a temporary directory if it doesn't exist
+try:
+    os.mkdir("temp")
+except FileExistsError:
+    pass
+
+# Streamlit app title
+st.title("Text to Speech")
+
+# Input text
+text = st.text_input("Enter text")
+
+# Input language selection
+in_lang = st.selectbox(
+    "Select your input language",
+    ("English", "Hindi", "Bengali", "Korean", "Chinese", "Japanese", "Telugu", "Tamil"),
+)
+
+# Map input language to language codes
+language_codes = {
+    "English": "en",
+    "Hindi": "hi",
+    "Bengali": "bn",
+    "Korean": "ko",
+    "Chinese": "zh",
+    "Japanese": "ja",
+    "Telugu": "te",
+    "Tamil": "ta",
+}
+input_language = language_codes.get(in_lang)
+
+# Output language selection
+out_lang = st.selectbox(
+    "Select your output language",
+    ("English", "Hindi", "Bengali", "Korean", "Chinese", "Japanese", "Telugu", "Tamil"),
+)
+output_language = language_codes.get(out_lang)
+
+# English accent selection
+english_accent = st.selectbox(
+    "Select your English accent",
+    (
+        "Default", "India", "United Kingdom", "United States", "Canada",
+        "Australia", "Ireland", "South Africa", "Thailand",
+    ),
+)
+
+# Map English accent to TLD
+accent_tld = {
+    "Default": "com",
+    "India": "co.in",
+    "United Kingdom": "co.uk",
+    "United States": "com",
+    "Canada": "ca",
+    "Australia": "com.au",
+    "Ireland": "ie",
+    "South Africa": "co.za",
+    "Thailand": "th",
+}
+tld = accent_tld.get(english_accent)
+
+# Text-to-speech function
+def text_to_speech(input_language, output_language, text, tld):
+    translator = Translator(from_lang=input_language, to_lang=output_language)
+    trans_text = translator.translate(text)
+    tts = gTTS(trans_text, lang=output_language, tld=tld, slow=False)
+    my_file_name = text[:20] if text else "audio"
+    tts.save(f"temp/{my_file_name}.mp3")
+    return my_file_name, trans_text
+
+# Display output text option
+display_output_text = st.checkbox("Display output text")
+
+# Convert button
+if st.button("Convert"):
+    result, output_text = text_to_speech(input_language, output_language, text, tld)
+    audio_file_path = f"temp/{result}.mp3"
+    with open(audio_file_path, "rb") as audio_file:
+        audio_bytes = audio_file.read()
+        st.markdown(f"## Your audio:")
+        st.audio(audio_bytes, format="audio/mp3")
+
+    if display_output_text:
+        st.markdown(f"## Output text:")
+        st.write(output_text)
+
+# Remove old files function
+def remove_files(n):
+    mp3_files = glob.glob("temp/*.mp3")
+    now = time.time()
+    n_days = n * 86400
+    for f in mp3_files:
+        if os.stat(f).st_mtime < now - n_days:
+            os.remove(f)
+            print("Deleted", f)
+
+# Remove files older than 7 days
+remove_files(7)
